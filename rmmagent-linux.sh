@@ -219,6 +219,7 @@ function update_agent() {
 
 function install_agent() {
     log_info "Installing agent binary..."
+    mkdir -p /usr/local/bin &> /dev/null
     cp "$TMPDIR/temp_rmmagent" /usr/local/bin/rmmagent
     chmod +x /usr/local/bin/rmmagent
     
