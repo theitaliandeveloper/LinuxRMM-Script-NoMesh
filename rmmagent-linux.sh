@@ -143,7 +143,7 @@ function go_install() {
     if [[ -d "/usr/local/go/bin" ]] && [[ ":$PATH:" != *":/usr/local/go/bin:"* ]]; then
         export PATH="$PATH:/usr/local/go/bin"
     fi
-    
+
     if ! command -v go &> /dev/null; then
         log_info "Go not found. Installing Go $go_version..."
         local go_tar="$TMPDIR/golang.tar.gz"
@@ -181,12 +181,15 @@ function agent_compile() {
     tar -xzf "$agent_tar" -C "$compile_dir"
     rm -f "$agent_tar"
     
-    local src_dir
-    src_dir=$(find "$compile_dir" -maxdepth 2 -type d -name "rmmagent-*" | head -n 1)
-    if [[ -z "$src_dir" || ! -d "$src_dir" ]]; then
-        log_error "Could not find extracted agent directory."
+    local go_mod_file
+    go_mod_file=$(find "$compile_dir" -maxdepth 3 -name "go.mod" | head -n 1)
+    if [[ -z "$go_mod_file" ]]; then
+        log_error "Could not find go.mod file in the extracted archive."
         exit 1
     fi
+    local src_dir
+    src_dir=$(dirname "$go_mod_file")
+
     
     (
         cd "$src_dir"
