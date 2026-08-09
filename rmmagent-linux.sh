@@ -1,4 +1,8 @@
 #!/bin/bash
+# Tactical RMM Agent Unofficial installer
+# Original version by ZoLuSs
+# Copyright (c) 2022 ZoLuSs (MIT License)
+# Modified by The Italian Developer to remove Mesh Agent (unneeded for command line servers)
 
 # === Temporary directory check ===
 if [[ -w /tmp ]]; then
@@ -20,24 +24,21 @@ if [[ $1 == "" ]]; then
 fi
 
 if [[ $1 == "help" ]]; then
-    echo "More information is available at github.com/ZoLuSs/rmmagent-script"
+    echo "More information is available at https://github.com/theitaliandeveloper/LinuxRMM-Script-NoMesh"
     echo ""
     echo "INSTALL arguments:"
     echo "Arg 1: 'install'"
-    echo "Arg 2: Mesh agent URL"
-    echo "Arg 3: API URL"
-    echo "Arg 4: Client ID"
-    echo "Arg 5: Site ID"
-    echo "Arg 6: Auth Key"
-    echo "Arg 7: Agent Type 'server' or 'workstation'"
+    echo "Arg 2: API URL"
+    echo "Arg 3: Client ID"
+    echo "Arg 4: Site ID"
+    echo "Arg 5: Auth Key"
+    echo "Arg 6: Agent Type 'server' or 'workstation'"
     echo ""
     echo "UPDATE arguments:"
     echo "Arg 1: 'update'"
     echo ""
     echo "UNINSTALL arguments:"
     echo "Arg 1: 'uninstall'"
-    echo "Arg 2: Mesh agent FQDN (e.g. mesh.example.com)"
-    echo "Arg 3: Mesh agent ID (ID must be wrapped in single quotes)"
     echo ""
     exit 0
 fi
@@ -59,14 +60,11 @@ case $system in
 esac
 
 ## Variables
-mesh_url=$2
-rmm_url=$3
-rmm_client_id=$4
-rmm_site_id=$5
-rmm_auth=$6
-rmm_agent_type=$7
-mesh_fqdn=$2
-mesh_id=$3
+rmm_url=$2
+rmm_client_id=$3
+rmm_site_id=$4
+rmm_auth=$5
+rmm_agent_type=$6
 
 go_version="1.21.6"
 go_url_amd64="https://go.dev/dl/go$go_version.linux-amd64.tar.gz"
@@ -115,11 +113,11 @@ function update_agent() {
 
 function install_agent() {
     cp "$TMPDIR/temp_rmmagent" /usr/local/bin/rmmagent
-    "$TMPDIR/temp_rmmagent" -m install -api $rmm_url -client-id $rmm_client_id -site-id $rmm_site_id -agent-type $rmm_agent_type -auth $rmm_auth
+    "$TMPDIR/temp_rmmagent" -m install -api $rmm_url -client-id $rmm_client_id -site-id $rmm_site_id -agent-type $rmm_agent_type -auth $rmm_auth -nomesh
     rm "$TMPDIR/temp_rmmagent"
     cat << "EOF" > /etc/systemd/system/tacticalagent.service
 [Unit]
-Description=Tactical RMM Linux Agent
+Description=Tactical RMM Agent
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/rmmagent -m svc
@@ -137,15 +135,6 @@ EOF
     systemctl start tacticalagent
 }
 
-function install_mesh() {
-    wget -O "$TMPDIR/meshagent" $mesh_url
-    chmod +x "$TMPDIR/meshagent"
-    mkdir -p /opt/tacticalmesh
-    "$TMPDIR/meshagent" -install --installPath="/opt/tacticalmesh"
-    rm "$TMPDIR/meshagent"
-    rm -f "$TMPDIR/meshagent.msh"
-}
-
 function uninstall_agent() {
     systemctl stop tacticalagent
     systemctl disable tacticalagent
@@ -155,17 +144,10 @@ function uninstall_agent() {
     rm -rf /etc/tacticalagent
 }
 
-function uninstall_mesh() {
-    wget "https://$mesh_fqdn/meshagents?script=1" -O "$TMPDIR/meshinstall.sh" || wget "https://$mesh_fqdn/meshagents?script=1" --no-proxy -O "$TMPDIR/meshinstall.sh"
-    chmod 755 "$TMPDIR/meshinstall.sh"
-    "$TMPDIR/meshinstall.sh" uninstall https://$mesh_fqdn $mesh_id || "$TMPDIR/meshinstall.sh" uninstall uninstall uninstall https://$mesh_fqdn $mesh_id
-    rm "$TMPDIR/meshinstall.sh"
-}
 
 case $1 in
     install)
         go_install
-        install_mesh
         agent_compile
         install_agent
         echo "Tactical Agent installation completed."
@@ -178,7 +160,6 @@ case $1 in
         exit 0;;
     uninstall)
         uninstall_agent
-        uninstall_mesh
         echo "Tactical Agent uninstall completed."
         exit 0;;
 esac
