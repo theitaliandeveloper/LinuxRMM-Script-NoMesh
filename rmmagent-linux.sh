@@ -86,9 +86,11 @@ if [[ "$1" == "help" ]]; then
     echo "Arg 4: Site ID"
     echo "Arg 5: Auth Key"
     echo "Arg 6: Agent Type 'server' or 'workstation'"
+    echo "Arg 7: (Optional) Binary Download URL (skips compilation)"
     echo ""
     echo "UPDATE arguments:"
     echo "Arg 1: 'update'"
+    echo "Arg 2: (Optional) Binary Download URL (skips compilation)"
     echo ""
     echo "UNINSTALL arguments:"
     echo "Arg 1: 'uninstall'"
@@ -118,6 +120,13 @@ rmm_client_id="${3:-}"
 rmm_site_id="${4:-}"
 rmm_auth="${5:-}"
 rmm_agent_type="${6:-}"
+
+rmm_bin_url=""
+if [[ "$1" == "install" ]]; then
+    rmm_bin_url="${7:-}"
+elif [[ "$1" == "update" ]]; then
+    rmm_bin_url="${2:-}"
+fi
 
 # Argument validation for installation
 if [[ "$1" == "install" ]]; then
@@ -250,6 +259,13 @@ EOF
     log_success "Agent installation completed."
 }
 
+function download_binary() {
+    log_info "Downloading pre-compiled agent binary from $rmm_bin_url..."
+    CLEANUP_FILES+=("$TMPDIR/temp_rmmagent")
+    wget -q --show-progress -O "$TMPDIR/temp_rmmagent" "$rmm_bin_url"
+    log_success "Agent binary downloaded successfully."
+}
+
 function uninstall_agent() {
     log_info "Stopping and disabling tacticalagent service..."
     systemctl stop tacticalagent || true
@@ -267,14 +283,22 @@ function uninstall_agent() {
 
 case "$1" in
     install)
-        go_install
-        agent_compile
+        if [[ -n "$rmm_bin_url" ]]; then
+            download_binary
+        else
+            go_install
+            agent_compile
+        fi
         install_agent
         exit 0
         ;;
     update)
-        go_install
-        agent_compile
+        if [[ -n "$rmm_bin_url" ]]; then
+            download_binary
+        else
+            go_install
+            agent_compile
+        fi
         update_agent
         exit 0
         ;;
